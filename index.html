@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <meta name="theme-color" content="#080810"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <title>减肥战队 💪</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{background:#080810;min-height:100vh}
+    ::-webkit-scrollbar{display:none}
+    input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pop{0%{transform:scale(.9) translateX(-50%)}60%{transform:scale(1.06) translateX(-50%)}100%{transform:scale(1) translateX(-50%)}}
+    @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+    .card{animation:fadeUp .35s ease both}
+    .card:nth-child(2){animation-delay:.06s}.card:nth-child(3){animation-delay:.12s}.card:nth-child(4){animation-delay:.18s}
+    .press:active{transform:scale(.97)}
+    .tabbtn{transition:color .2s;border:none;background:none;cursor:pointer}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+const { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } = Recharts;
+
+const SEED_MEMBERS = [
+  { id:"sammi",   name:"Sammi",  emoji:"💪", target:64,  startWeight:66.8,  usesRelative:false },
+  { id:"guanren", name:"官人",   emoji:"🔥", target:74,  startWeight:77.15, usesRelative:false },
+  { id:"sharon",  name:"Sharon", emoji:"👑", target:64,  startWeight:68.55, usesRelative:false },
+  { id:"dajie",   name:"大姐",   emoji:"🌸", target:-3,  startWeight:0,     usesRelative:true  },
+];
+
+const SEED_DATA = {
+  sammi:[
+    {date:"2025-04-28",weight:66.8},{date:"2025-04-29",weight:66.7},{date:"2025-04-30",weight:66.5},
+    {date:"2025-05-01",weight:66.0},{date:"2025-05-02",weight:65.8},{date:"2025-05-03",weight:65.8},
+    {date:"2025-05-04",weight:66.4},{date:"2025-05-05",weight:66.6},{date:"2025-05-06",weight:65.9},
+    {date:"2025-05-07",weight:65.5},{date:"2025-05-08",weight:66.4},{date:"2025-05-09",weight:65.8},
+    {date:"2025-05-10",weight:66.6},{date:"2025-05-11",weight:65.9},{date:"2025-05-12",weight:65.9},
+    {date:"2025-05-13",weight:65.9},{date:"2025-05-14",weight:65.8},{date:"2025-05-15",weight:65.5},
+    {date:"2025-05-16",weight:65.4},
+  ],
+  guanren:[
+    {date:"2025-04-28",weight:77.15},{date:"2025-04-29",weight:77.15},{date:"2025-04-30",weight:76.35},
+    {date:"2025-05-01",weight:76.1},{date:"2025-05-02",weight:76.5},{date:"2025-05-03",weight:75.2},
+    {date:"2025-05-04",weight:75.8},{date:"2025-05-05",weight:75.6},{date:"2025-05-06",weight:75.45},
+    {date:"2025-05-07",weight:75.8},{date:"2025-05-08",weight:75.6},{date:"2025-05-09",weight:75.6},
+    {date:"2025-05-10",weight:75.5},{date:"2025-05-11",weight:75.4},{date:"2025-05-12",weight:75.6},
+    {date:"2025-05-13",weight:75.5},{date:"2025-05-14",weight:75.7},{date:"2025-05-15",weight:76.5},
+    {date:"2025-05-16",weight:75.9},
+  ],
+  sharon:[
+    {date:"2025-05-03",weight:68.55},{date:"2025-05-04",weight:68.1},{date:"2025-05-05",weight:68.4},
+    {date:"2025-05-06",weight:67.9},{date:"2025-05-07",weight:67.7},{date:"2025-05-08",weight:67.9},
+    {date:"2025-05-09",weight:67.9},{date:"2025-05-10",weight:67.9},{date:"2025-05-11",weight:67.8},
+    {date:"2025-05-12",weight:68.0},{date:"2025-05-13",weight:67.3},{date:"2025-05-14",weight:67.0},
+    {date:"2025-05-15",weight:66.85},{date:"2025-05-16",weight:66.75},
+  ],
+  dajie:[
+    {date:"2025-04-29",weight:0},{date:"2025-04-30",weight:-0.35},{date:"2025-05-01",weight:-0.85},
+    {date:"2025-05-02",weight:-0.50},{date:"2025-05-03",weight:-0.80},{date:"2025-05-04",weight:-0.80},
+    {date:"2025-05-05",weight:-0.30},{date:"2025-05-06",weight:-0.60},{date:"2025-05-07",weight:-0.50},
+    {date:"2025-05-08",weight:0.30},{date:"2025-05-09",weight:0.00},{date:"2025-05-10",weight:-0.50},
+  ],
+};
+
+const STORAGE_KEY="wt-data-v5";
+const MEMBERS_KEY="wt-members-v5";
+const EMOJIS=["💪","🔥","👑","🌸","⭐","🎯","💎","🦋","🌟","🏃","😎","🍀"];
+function fmtDate(s){const d=new Date(s);return `${d.getMonth()+1}/${d.getDate()}`;}
+
+function App(){
+  const [tab,setTab]=useState("home");
+  const [members,setMembers]=useState(SEED_MEMBERS);
+  const [data,setData]=useState(SEED_DATA);
+  const [selMember,setSelMember]=useState("sammi");
+  const [inputW,setInputW]=useState("");
+  const [recDate,setRecDate]=useState(new Date().toISOString().split("T")[0]);
+  const [toast,setToast]=useState(null);
+  const [addOpen,setAddOpen]=useState(false);
+  const [newName,setNewName]=useState("");
+  const [newEmoji,setNewEmoji]=useState("⭐");
+  const [newStart,setNewStart]=useState("");
+  const [newTarget,setNewTarget]=useState("");
+  const [newRel,setNewRel]=useState(false);
+
+  useEffect(()=>{
+    try{
+      const d=localStorage.getItem(STORAGE_KEY);
+      const m=localStorage.getItem(MEMBERS_KEY);
+      if(d)setData(JSON.parse(d));
+      if(m)setMembers(JSON.parse(m));
+    }catch{}
+  },[]);
+  useEffect(()=>{try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}catch{}},[data]);
+  useEffect(()=>{try{localStorage.setItem(MEMBERS_KEY,JSON.stringify(members));}catch{}},[members]);
+
+  function toast_(msg){setToast(msg);setTimeout(()=>setToast(null),2500);}
+
+  function getStats(id){
+    const m=members.find(x=>x.id===id);
+    if(!m)return{current:0,change:0,records:[]};
+    const records=[...(data[id]||[])].sort((a,b)=>a.date.localeCompare(b.date));
+    if(!records.length)return{current:m.startWeight,change:0,records};
+    const current=records[records.length-1].weight;
+    return{current,change:current-m.startWeight,records};
+  }
+
+  function getBoard(){
+    return members.map(m=>{
+      const s=getStats(m.id);
+      const goal=Math.abs(m.target-m.startWeight);
+      const pct=goal>0?Math.max(0,Math.min(100,(Math.abs(s.change)/goal)*100*(s.change<=0?1:-1))):0;
+      return{...m,...s,pct};
+    }).sort((a,b)=>b.pct-a.pct);
+  }
+
+  function saveRecord(){
+    if(!selMember||!inputW)return;
+    const w=parseFloat(inputW);
+    const m=members.find(x=>x.id===selMember);
+    if(!m||isNaN(w)){toast_("请输入正确数值");return;}
+    const newData={...data};
+    const recs=[...(newData[selMember]||[])];
+    const idx=recs.findIndex(r=>r.date===recDate);
+    if(idx>=0)recs[idx]={date:recDate,weight:w};
+    else recs.push({date:recDate,weight:w});
+    newData[selMember]=recs.sort((a,b)=>a.date.localeCompare(b.date));
+    setData(newData);setInputW("");
+    toast_("✅ 打卡成功！加油！");
+    setTimeout(()=>setTab("home"),800);
+  }
+
+  function addMember(){
+    if(!newName.trim()){toast_("请输入名字");return;}
+    const start=newRel?0:parseFloat(newStart);
+    const target=parseFloat(newTarget);
+    if(!newRel&&isNaN(start)){toast_("请输入起始体重");return;}
+    if(isNaN(target)){toast_("请输入目标");return;}
+    const id=`m_${Date.now()}`;
+    const nm={id,name:newName.trim(),emoji:newEmoji,target,startWeight:start,usesRelative:newRel};
+    setMembers(prev=>[...prev,nm]);
+    setData(prev=>({...prev,[id]:[]}));
+    setNewName("");setNewEmoji("⭐");setNewStart("");setNewTarget("");setNewRel(false);
+    setAddOpen(false);toast_(`✅ ${newName.trim()} 加入战队！`);
+  }
+
+  const board=getBoard();
+  const medals=["🥇","🥈","🥉","4️⃣","5️⃣","6️⃣"];
+  const cardStyle={background:"#0e0e18",border:"1px solid #18182a",borderRadius:16,padding:"14px 16px",marginBottom:10,cursor:"pointer",position:"relative",overflow:"hidden"};
+  const inputStyle={width:"100%",background:"#0e0e18",border:"1px solid #18182a",borderRadius:10,padding:"12px 14px",color:"#f0f0f0",fontSize:15,outline:"none"};
+  const secCard={background:"#0e0e18",border:"1px solid #18182a",borderRadius:13,padding:"13px",marginBottom:11};
+  const labelStyle={fontSize:10,color:"#444",letterSpacing:2.5,textTransform:"uppercase",fontFamily:"'Space Mono'",marginBottom:12};
+
+  return (
+    <div style={{minHeight:"100vh",background:"#080810",fontFamily:"'DM Sans','Noto Sans SC',sans-serif",color:"#f0f0f0",maxWidth:430,margin:"0 auto"}}>
+
+      {/* Header */}
+      <div style={{padding:"20px 20px 0",background:"#080810",position:"sticky",top:0,zIndex:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontSize:10,color:"#444",letterSpacing:2.5,textTransform:"uppercase",fontFamily:"'Space Mono'"}}>SLIM SQUAD</div>
+            <div style={{fontSize:22,fontWeight:700,letterSpacing:-0.5,marginTop:1}}>减肥战队 💪</div>
+          </div>
+          <div style={{background:"#12121e",borderRadius:10,padding:"6px 12px",fontSize:11,color:"#555",fontFamily:"'Space Mono'"}}>
+            {new Date().toLocaleDateString("zh-CN",{month:"short",day:"numeric"})}
+          </div>
+        </div>
+      </div>
+
+      <div style={{padding:"16px 20px 100px"}}>
+
+        {/* ══ HOME ══ */}
+        {tab==="home" && (
+          <div>
+            <div style={labelStyle}>🏆 本周排行榜</div>
+            {board.map((m,i)=>{
+              const goal=Math.abs(m.target-m.startWeight);
+              const pct=goal>0?Math.max(0,Math.min(100,(Math.abs(m.change)/goal)*100)):0;
+              const win=m.change<=0;
+              return(
+                <div key={m.id} className="card press"
+                  onClick={()=>{setSelMember(m.id);setTab("progress");}}
+                  style={{...cardStyle,background:i===0?"linear-gradient(135deg,#101a08,#0e0e18)":"#0e0e18",border:i===0?"1px solid #b8f56428":"1px solid #18182a"}}>
+                  {i===0&&<div style={{position:"absolute",top:0,right:0,width:70,height:70,background:"radial-gradient(#b8f56415,transparent)",borderRadius:"0 16px 0 70px"}}/>}
+                  <div style={{display:"flex",alignItems:"center",gap:12}}>
+                    <div style={{fontSize:20,minWidth:28}}>{medals[i]||"·"}</div>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
+                        <div style={{fontWeight:600,fontSize:15}}>{m.emoji} {m.name}</div>
+                        <div style={{fontWeight:700,fontSize:17,color:win?"#b8f564":"#ff6b6b",fontFamily:"'Space Mono'"}}>
+                          {m.usesRelative?`${m.change>=0?"+":""}${m.change.toFixed(2)}kg`:`${win?"":"+"}${m.change.toFixed(2)}kg`}
+                        </div>
+                      </div>
+                      <div style={{background:"#080810",borderRadius:5,height:5,overflow:"hidden"}}>
+                        <div style={{width:`${pct}%`,height:"100%",background:"linear-gradient(90deg,#b8f564,#7de84a)",borderRadius:5}}/>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",marginTop:4,fontSize:10,color:"#3a3a4a"}}>
+                        <span>目标 {m.usesRelative?`${m.target}kg`:`${m.target}kg`}</span>
+                        <span style={{fontFamily:"'Space Mono'"}}>{pct.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,margin:"14px 0"}}>
+              {[
+                {label:"团队总减重",value:`${Math.abs(members.filter(m=>!m.usesRelative).reduce((acc,m)=>{const s=getStats(m.id);return acc+(s.change<0?s.change:0);},0)).toFixed(2)}kg`,icon:"📉"},
+                {label:"战队人数",value:`${members.length} 人`,icon:"👥"},
+              ].map((s,i)=>(
+                <div key={i} style={{background:"#0e0e18",border:"1px solid #18182a",borderRadius:14,padding:"14px"}}>
+                  <div style={{fontSize:18,marginBottom:4}}>{s.icon}</div>
+                  <div style={{fontSize:10,color:"#444",marginBottom:2}}>{s.label}</div>
+                  <div style={{fontSize:19,fontWeight:700,fontFamily:"'Space Mono'",color:"#b8f564"}}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="press" onClick={()=>setAddOpen(true)}
+              style={{background:"#0e0e18",border:"1px dashed #252535",borderRadius:14,padding:"13px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+              <div style={{width:36,height:36,borderRadius:10,background:"#181828",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>➕</div>
+              <div>
+                <div style={{fontWeight:600,fontSize:14}}>加入战队</div>
+                <div style={{fontSize:11,color:"#444",marginTop:1}}>添加新成员 · 一起减肥</div>
+              </div>
+            </div>
+
+            <div className="press" onClick={()=>setTab("record")}
+              style={{background:"linear-gradient(135deg,#b8f564,#7de84a)",borderRadius:18,padding:"18px",cursor:"pointer",textAlign:"center"}}>
+              <div style={{fontSize:26,marginBottom:2}}>➕</div>
+              <div style={{fontWeight:700,fontSize:15,color:"#0a1400"}}>记录今天体重</div>
+              <div style={{fontSize:11,color:"#2a4a00",marginTop:2}}>点击打卡 · 每天坚持</div>
+            </div>
+
+            {addOpen&&(
+              <div onClick={e=>{if(e.target===e.currentTarget)setAddOpen(false);}}
+                style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",zIndex:50,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+                <div style={{background:"#111120",borderRadius:"22px 22px 0 0",padding:"20px 20px 44px",width:"100%",maxWidth:430,animation:"slideUp .3s ease"}}>
+                  <div style={{width:38,height:3,background:"#252535",borderRadius:2,margin:"0 auto 18px"}}/>
+                  <div style={{fontWeight:700,fontSize:17,marginBottom:18}}>➕ 加入战队</div>
+                  <div style={{fontSize:10,color:"#444",marginBottom:7}}>选择头像</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:16}}>
+                    {EMOJIS.map(e=>(
+                      <button key={e} onClick={()=>setNewEmoji(e)}
+                        style={{width:38,height:38,borderRadius:9,border:newEmoji===e?"2px solid #b8f564":"2px solid #1e1e2e",background:newEmoji===e?"#1a2a08":"#0e0e18",fontSize:18,cursor:"pointer"}}>{e}</button>
+                    ))}
+                  </div>
+                  <div style={{fontSize:10,color:"#444",marginBottom:6}}>名字</div>
+                  <input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="例：小美" style={{...inputStyle,marginBottom:14}}/>
+                  <div onClick={()=>setNewRel(v=>!v)}
+                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,padding:"12px 14px",background:"#0e0e18",borderRadius:10,border:"1px solid #1e1e2e",cursor:"pointer"}}>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:500}}>只记变化量（不公开真实体重）</div>
+                      <div style={{fontSize:10,color:"#444",marginTop:2}}>像大姐一样只记 +/- 变化</div>
+                    </div>
+                    <div style={{width:42,height:23,borderRadius:12,background:newRel?"#b8f564":"#2a2a3a",position:"relative",transition:"background .2s",flexShrink:0,marginLeft:12}}>
+                      <div style={{position:"absolute",top:3,left:newRel?21:3,width:17,height:17,borderRadius:"50%",background:"#fff",transition:"left .2s"}}/>
+                    </div>
+                  </div>
+                  {!newRel&&(
+                    <div>
+                      <div style={{fontSize:10,color:"#444",marginBottom:6}}>起始体重 (kg)</div>
+                      <input type="number" step="0.1" value={newStart} onChange={e=>setNewStart(e.target.value)} placeholder="例：68.5" style={{...inputStyle,marginBottom:14}}/>
+                    </div>
+                  )}
+                  <div style={{fontSize:10,color:"#444",marginBottom:6}}>{newRel?"目标减重 (输入负数，例：-3)":"目标体重 (kg)"}</div>
+                  <input type="number" step="0.1" value={newTarget} onChange={e=>setNewTarget(e.target.value)} placeholder={newRel?"-3":"64"} style={{...inputStyle,marginBottom:20}}/>
+                  <div style={{display:"flex",gap:10}}>
+                    <button onClick={()=>setAddOpen(false)} style={{flex:1,background:"#1a1a28",border:"none",borderRadius:12,padding:"14px",color:"#777",fontSize:14,cursor:"pointer",fontWeight:600}}>取消</button>
+                    <button onClick={addMember} style={{flex:2,background:"linear-gradient(135deg,#b8f564,#7de84a)",border:"none",borderRadius:12,padding:"14px",color:"#0a1400",fontSize:14,cursor:"pointer",fontWeight:700}}>加入战队 ✓</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ RECORD ══ */}
+        {tab==="record"&&(
+          <div style={{animation:"fadeUp .3s ease"}}>
+            <div style={labelStyle}>➕ 打卡记录</div>
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:10,color:"#444",marginBottom:6}}>📅 日期</div>
+              <input type="date" value={recDate} onChange={e=>setRecDate(e.target.value)} style={inputStyle}/>
+            </div>
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:10,color:"#444",marginBottom:8}}>👤 选择打卡人</div>
+              <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(members.length,4)},1fr)`,gap:7}}>
+                {members.map(m=>(
+                  <button key={m.id} onClick={()=>setSelMember(m.id)}
+                    style={{background:selMember===m.id?"#b8f564":"#0e0e18",border:selMember===m.id?"none":"1px solid #18182a",borderRadius:12,padding:"12px 5px",color:selMember===m.id?"#0a1400":"#666",cursor:"pointer",fontSize:11,fontWeight:600,lineHeight:1.6}}>
+                    <div style={{fontSize:20}}>{m.emoji}</div>{m.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {selMember&&(()=>{
+              const m=members.find(x=>x.id===selMember);
+              if(!m)return null;
+              const stats=getStats(selMember);
+              return(
+                <div style={{marginBottom:22}}>
+                  <div style={{fontSize:10,color:"#444",marginBottom:6}}>⚖️ {m.usesRelative?"今日累计变化 (从起点0开始)":"今日体重 (kg)"}</div>
+                  <input type="number" step="0.05" placeholder={m.usesRelative?"-1.5":"65.4"}
+                    value={inputW} onChange={e=>setInputW(e.target.value)}
+                    style={{...inputStyle,border:"1px solid #b8f56444",fontSize:26,fontWeight:700,fontFamily:"'Space Mono'",padding:"15px 16px"}}/>
+                  {inputW&&(()=>{
+                    const diff=parseFloat(inputW)-stats.current;
+                    const good=diff<0;
+                    return <div style={{marginTop:6,fontSize:12,color:good?"#b8f564":"#ff6b6b",fontFamily:"'Space Mono'"}}>vs 上次: {good?"":"+"}{diff.toFixed(2)}kg {good?"📉 下降！":"📈 加把劲！"}</div>;
+                  })()}
+                </div>
+              );
+            })()}
+            <button onClick={saveRecord}
+              style={{width:"100%",background:selMember&&inputW?"linear-gradient(135deg,#b8f564,#7de84a)":"#181828",border:"none",borderRadius:14,padding:"17px",fontSize:15,fontWeight:700,color:selMember&&inputW?"#0a1400":"#333",cursor:"pointer"}}>
+              保存记录 ✓
+            </button>
+          </div>
+        )}
+
+        {/* ══ PROGRESS ══ */}
+        {tab==="progress"&&(
+          <div>
+            <div style={labelStyle}>📈 个人进度</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
+              {members.map(m=>(
+                <button key={m.id} onClick={()=>setSelMember(m.id)}
+                  style={{flex:1,minWidth:60,background:selMember===m.id?"#b8f564":"#0e0e18",border:selMember===m.id?"none":"1px solid #18182a",borderRadius:10,padding:"9px 4px",color:selMember===m.id?"#0a1400":"#555",cursor:"pointer",fontSize:11,fontWeight:600}}>
+                  {m.emoji} {m.name}
+                </button>
+              ))}
+            </div>
+            {selMember&&(()=>{
+              const m=members.find(x=>x.id===selMember);
+              if(!m)return null;
+              const stats=getStats(selMember);
+              const goal=Math.abs(m.target-m.startWeight);
+              const pct=goal>0?Math.max(0,Math.min(100,(Math.abs(stats.change)/goal)*100)):0;
+              const chartData=stats.records.map(r=>({date:fmtDate(r.date),weight:r.weight}));
+              return(
+                <div style={{animation:"fadeUp .3s ease"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+                    {[
+                      {label:m.usesRelative?"累计变化":"当前体重",value:m.usesRelative?`${stats.change>=0?"+":""}${stats.change.toFixed(2)}kg`:`${stats.current}kg`,color:"#f0f0f0"},
+                      {label:"总减重",value:`${stats.change.toFixed(2)}kg`,color:stats.change<=0?"#b8f564":"#ff6b6b"},
+                      {label:"目标",value:m.usesRelative?`-${Math.abs(m.target)}kg`:`${m.target}kg`,color:"#666"},
+                    ].map((s,i)=>(
+                      <div key={i} style={{background:"#0e0e18",border:"1px solid #18182a",borderRadius:12,padding:"11px 10px"}}>
+                        <div style={{fontSize:9,color:"#444",marginBottom:3}}>{s.label}</div>
+                        <div style={{fontSize:14,fontWeight:700,fontFamily:"'Space Mono'",color:s.color}}>{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={secCard}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:7,fontSize:11,color:"#555"}}>
+                      <span>目标完成</span>
+                      <span style={{color:"#b8f564",fontFamily:"'Space Mono'"}}>{pct.toFixed(0)}%</span>
+                    </div>
+                    <div style={{background:"#080810",borderRadius:5,height:7,overflow:"hidden"}}>
+                      <div style={{width:`${pct}%`,height:"100%",background:"linear-gradient(90deg,#b8f564,#7de84a)",borderRadius:5}}/>
+                    </div>
+                    {!m.usesRelative&&<div style={{display:"flex",justifyContent:"space-between",marginTop:5,fontSize:10,color:"#333"}}><span>起点 {m.startWeight}kg</span><span>目标 {m.target}kg</span></div>}
+                  </div>
+                  {chartData.length>1?(
+                    <div style={secCard}>
+                      <div style={{fontSize:10,color:"#444",marginBottom:10}}>📉 趋势图{m.usesRelative?" (累计变化)":""}</div>
+                      <ResponsiveContainer width="100%" height={145}>
+                        <LineChart data={chartData}>
+                          <XAxis dataKey="date" tick={{fill:"#3a3a4a",fontSize:9}} axisLine={false} tickLine={false}/>
+                          <YAxis domain={["auto","auto"]} tick={{fill:"#3a3a4a",fontSize:9}} axisLine={false} tickLine={false} width={36}/>
+                          <Tooltip contentStyle={{background:"#181828",border:"1px solid #252535",borderRadius:8,color:"#f0f0f0",fontSize:11}}/>
+                          <ReferenceLine y={m.target} stroke="#b8f56430" strokeDasharray="4 4"/>
+                          <Line type="monotone" dataKey="weight" stroke="#b8f564" strokeWidth={2} dot={{fill:"#b8f564",r:3}} activeDot={{r:5}}/>
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ):(
+                    <div style={{...secCard,textAlign:"center",color:"#333",fontSize:13,padding:"26px"}}>
+                      <div style={{fontSize:26,marginBottom:7}}>📭</div>记录更多天后显示趋势图
+                    </div>
+                  )}
+                  <div style={secCard}>
+                    <div style={{fontSize:10,color:"#444",marginBottom:10}}>📋 打卡记录</div>
+                    {[...stats.records].reverse().map((r,i,arr)=>{
+                      const prev=arr[i+1];
+                      const diff=prev?r.weight-prev.weight:null;
+                      return(
+                        <div key={r.date} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<arr.length-1?"1px solid #141422":"none"}}>
+                          <div style={{fontSize:11,color:"#555",fontFamily:"'Space Mono'"}}>{r.date}</div>
+                          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                            {diff!==null&&<div style={{fontSize:11,color:diff<0?"#b8f564":"#ff6b6b"}}>{diff<0?"":"+"}{diff.toFixed(2)}</div>}
+                            <div style={{fontWeight:700,fontFamily:"'Space Mono'",fontSize:13}}>{r.weight}{m.usesRelative?"":"kg"}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* ══ WEEKLY ══ */}
+        {tab==="weekly"&&(
+          <div>
+            <div style={labelStyle}>📅 每周总结</div>
+            {(()=>{
+              const weeks={};
+              members.filter(m=>!m.usesRelative).forEach(m=>{
+                const recs=[...(data[m.id]||[])].sort((a,b)=>a.date.localeCompare(b.date));
+                recs.forEach((r,i)=>{
+                  if(i===0)return;
+                  const d=new Date(r.date);d.setDate(d.getDate()-d.getDay());
+                  const wk=d.toISOString().split("T")[0];
+                  if(!weeks[wk])weeks[wk]={};
+                  if(!weeks[wk][m.id])weeks[wk][m.id]={name:m.name,emoji:m.emoji,changes:[]};
+                  weeks[wk][m.id].changes.push(r.weight-recs[i-1].weight);
+                });
+              });
+              const summary=Object.entries(weeks).map(([wk,mems])=>{
+                const ms=Object.values(mems).map(x=>({name:x.name,emoji:x.emoji,change:x.changes.reduce((a,b)=>a+b,0)}));
+                const total=ms.reduce((a,b)=>a+b.change,0);
+                const sorted=[...ms].sort((a,b)=>a.change-b.change);
+                const d=new Date(wk);
+                return{label:`${d.getMonth()+1}/${d.getDate()} 这周`,ms,total,avg:total/ms.length,best:sorted[0]};
+              }).reverse();
+              if(!summary.length)return(
+                <div style={{...secCard,textAlign:"center",color:"#333",padding:"34px"}}>
+                  <div style={{fontSize:32,marginBottom:9}}>📭</div>记录更多天后自动生成每周总结
+                </div>
+              );
+              return summary.map((w,i)=>(
+                <div key={i} className="card" style={cardStyle}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:11}}>
+                    <div style={{fontWeight:700,fontSize:15}}>{w.label}</div>
+                    <div style={{fontSize:11,color:w.total<=0?"#b8f564":"#ff6b6b",fontFamily:"'Space Mono'"}}>团队 {w.total<=0?"":"+"}{ w.total.toFixed(2)}kg</div>
+                  </div>
+                  {w.ms.map(ms=>(
+                    <div key={ms.name} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid #141422"}}>
+                      <div style={{fontSize:13,color:"#777"}}>{ms.emoji} {ms.name}</div>
+                      <div style={{fontSize:13,fontFamily:"'Space Mono'",color:ms.change<=0?"#b8f564":"#ff6b6b"}}>{ms.change<=0?"":"+"}{ ms.change.toFixed(2)}kg</div>
+                    </div>
+                  ))}
+                  <div style={{display:"flex",gap:8,marginTop:9}}>
+                    {w.best&&<div style={{flex:1,background:"#0d1a06",borderRadius:8,padding:"8px 10px",fontSize:11,color:"#7de84a"}}>🏆 最佳<br/>{w.best.emoji} {w.best.name} {w.best.change.toFixed(2)}kg</div>}
+                    <div style={{flex:1,background:"#0d0d1a",borderRadius:8,padding:"8px 10px",fontSize:11,color:"#555"}}>📊 人均<br/>{ w.avg.toFixed(2)}kg</div>
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+        )}
+      </div>
+
+      {toast&&(
+        <div style={{position:"fixed",top:58,left:"50%",transform:"translateX(-50%)",background:"#b8f564",color:"#0a1400",padding:"10px 22px",borderRadius:20,fontWeight:700,fontSize:13,zIndex:200,animation:"pop .3s ease",whiteSpace:"nowrap",boxShadow:"0 4px 24px #b8f56444"}}>
+          {toast}
+        </div>
+      )}
+
+      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#080810",borderTop:"1px solid #141422",display:"flex",padding:"10px 0 24px"}}>
+        {[
+          {id:"home",label:"排行榜",icon:"🏠"},
+          {id:"record",label:"打卡",icon:"➕"},
+          {id:"progress",label:"进度",icon:"📈"},
+          {id:"weekly",label:"周总结",icon:"📅"},
+        ].map(t=>(
+          <button key={t.id} className="tabbtn"
+            onClick={()=>setTab(t.id)}
+            style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,color:tab===t.id?"#b8f564":"#363646",padding:"3px"}}>
+            <div style={{fontSize:19}}>{t.icon}</div>
+            <div style={{fontSize:10,fontWeight:tab===t.id?700:400}}>{t.label}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
